@@ -1,0 +1,93 @@
+on:
+  workflow_call:
+    inputs:
+      gcchash:
+        required: true
+        type: string
+  workflow_dispatch:
+    branches:
+      - build-frequent
+    inputs:
+      gcchash:
+        description: 'GCC Hash'
+        required: true
+
+jobs:
+  compare-artifacts:
+    if: always() # ensure comparison always runs even on error
+    runs-on: ubuntu-22.04
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+          
+      - name: Download and compare
+        run: |
+          pip install pygithub requests
+          mkdir logs
+          mkdir summaries
+          python ./scripts/download_artifacts.py -hash ${{ inputs.gcchash }} -token ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Make artifact zips
+        run: |
+          zip -r summaries.zip summaries
+          zip -r logs.zip logs
+
+      - name: Upload compare summaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.gcchash }}-summaries
+          path: |
+            summaries.zip
+          retention-days: 90
+
+      - name: Upload log failures
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.gcchash }}-logs
+          path: |
+            logs.zip
+          retention-days: 90
+
+    outputs:
+      gcchash: ${{ inputs.gcchash }}
+
+  
+  generate-issues:
+    if: always() # ensure generate issues always runs even on error
+    needs: [compare-artifacts]
+    runs-on: ubuntu-22.04
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download summaries artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ needs.compare-artifacts.outputs.gcchash }}-summaries
+
+      - name: Download logs artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ needs.compare-artifacts.outputs.gcchash }}-logs
+
+      - name: Aggregate information
+        run: |
+          unzip summaries.zip
+          unzip logs.zip
+          python ./scripts/aggregate.py \
+            -chash ${{ needs.compare-artifacts.outputs.gcchash }} \
+            -o issue.md
+          cat issue.md
+
+      - name: Trim issue length # reduce the number of lines in final issue so github always creates issue
+        run: |
+          head -100 issue.md > trimmed_issue.md
+          cat trimmed_issue.md
+
+      - uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          filename: trimmed_issue.md
+          update_existing: true
