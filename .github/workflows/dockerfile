@@ -12,7 +12,7 @@ FROM ubuntu:22.04 as get-sources
 ARG GCCHASH
 RUN apt update
 RUN apt install git -y
-RUN git clone https://github.com/patrick-rivos/riscv-gnu-toolchain.git tc
+RUN git clone https://github.com/rivosinc/riscv-gnu-toolchain-gcc-ci.git tc
 RUN cd tc && git submodule update --init --recursive binutils
 RUN cd tc && git submodule update --init --recursive dejagnu
 RUN cd tc && git submodule update --init --recursive gdb
@@ -33,7 +33,7 @@ ARG TARGET
 ARG MULTILIB
 RUN apt update
 RUN apt install git -y
-RUN git clone https://github.com/patrick-rivos/riscv-gnu-toolchain.git tc
+RUN git clone https://github.com/rivosinc/riscv-gnu-toolchain-gcc-ci.git tc
 RUN cd tc && rm -rf rm -rf .git binutils dejagnu gcc gdb glibc newlib qemu
 COPY out/cache.zip tc/cache.zip
 RUN apt install unzip -y
@@ -61,7 +61,7 @@ ARG TARGET
 ARG MULTILIB
 RUN apt update
 RUN apt install git -y
-RUN git clone https://github.com/patrick-rivos/riscv-gnu-toolchain.git tc
+RUN git clone https://github.com/rivosinc/riscv-gnu-toolchain-gcc-ci.git tc
 RUN cd tc && rm -rf rm -rf .git binutils dejagnu gcc gdb glibc newlib qemu
 COPY out/cache.zip tc/cache.zip
 RUN apt install unzip -y
